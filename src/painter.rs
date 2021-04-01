@@ -33,74 +33,8 @@ struct UserTexture {
     dirty: bool,
 }
 
-const VS_SRC: &str = r#"
-    #version 150
-    uniform vec2 u_screen_size;
-    in vec2 a_pos;
-    in vec4 a_srgba; // 0-255 sRGB
-    in vec2 a_tc;
-    out vec4 v_rgba;
-    out vec2 v_tc;
-
-    // 0-1 linear  from  0-255 sRGB
-    vec3 linear_from_srgb(vec3 srgb) {
-        bvec3 cutoff = lessThan(srgb, vec3(10.31475));
-        vec3 lower = srgb / vec3(3294.6);
-        vec3 higher = pow((srgb + vec3(14.025)) / vec3(269.025), vec3(2.4));
-        return mix(higher, lower, cutoff);
-    }
-
-    vec4 linear_from_srgba(vec4 srgba) {
-        return vec4(linear_from_srgb(srgba.rgb), srgba.a / 255.0);
-    }
-
-    void main() {
-        gl_Position = vec4(
-            2.0 * a_pos.x / u_screen_size.x - 1.0,
-            1.0 - 2.0 * a_pos.y / u_screen_size.y,
-            0.0,
-            1.0);
-        v_rgba = linear_from_srgba(a_srgba);
-        v_tc = a_tc;
-    }
-"#;
-
-const FS_SRC: &str = r#"
-    #version 150
-    uniform sampler2D u_sampler;
-    in vec4 v_rgba;
-    in vec2 v_tc;
-    out vec4 f_color;
-
-    // 0-255 sRGB  from  0-1 linear
-    vec3 srgb_from_linear(vec3 rgb) {
-        bvec3 cutoff = lessThan(rgb, vec3(0.0031308));
-        vec3 lower = rgb * vec3(3294.6);
-        vec3 higher = vec3(269.025) * pow(rgb, vec3(1.0 / 2.4)) - vec3(14.025);
-        return mix(higher, lower, vec3(cutoff));
-    }
-
-    vec4 srgba_from_linear(vec4 rgba) {
-        return vec4(srgb_from_linear(rgba.rgb), 255.0 * rgba.a);
-    }
-    
-    vec3 linear_from_srgb(vec3 srgb) {
-        bvec3 cutoff = lessThan(srgb, vec3(10.31475));
-        vec3 lower = srgb / vec3(3294.6);
-        vec3 higher = pow((srgb + vec3(14.025)) / vec3(269.025), vec3(2.4));
-        return mix(higher, lower, vec3(cutoff));
-    }
-
-    vec4 linear_from_srgba(vec4 srgba) {
-        return vec4(linear_from_srgb(srgba.rgb), srgba.a / 255.0);
-    }
-
-    void main() {
-        // Need to convert from SRGBA to linear.
-        vec4 texture_rgba = linear_from_srgba(texture(u_sampler, v_tc) * 255.0);
-        f_color = v_rgba * texture_rgba;
-    }
-"#;
+const VS_SRC: &str = include_str!("shader/vertex_120.glsl");
+const FS_SRC: &str = include_str!("shader/fragment_120.glsl");
 
 pub struct Painter {
     program: GLuint,
